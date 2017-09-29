@@ -32,6 +32,7 @@
 			}
 		},
 		"adminUsername": {
+			"defaultValue": "kapischk",
 			"type": "String",
 			"metadata": {
 				"description": "Admin username on all VMs."
