@@ -44,13 +44,20 @@
 			}
 		},
 		"vnetName": {
-			"defaultValue": "",
+			"defaultValue": "test-resgr-vnet",
 			"type": "string"
 		},
 		"vnetResourceGroup": {
-			"defaultValue": "",
+			"defaultValue": "test-add-to-resgr",
 			"type": "string"
-		}
+		},
+        	"subnetName": {
+           		"defaultValue": "default",
+			"type": "string",
+           		"metadata": {
+              			"description": "This is the name of the subnet to use for the NFS server."
+			}
+           	}
 	},
 	"variables": {
 		"namingInfix": "[toLower(substring(concat(parameters('vmssName'), uniqueString(resourceGroup().id)), 0, 9))]",
