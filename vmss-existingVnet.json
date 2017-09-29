@@ -1,0 +1,137 @@
+{"$schema": "http://schema.management.azure.com/schemas/2015-01-01-preview/deploymentTemplate.json",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"resourceLocation": {
+            "defaultValue": "West Europe",
+			"type": "String",
+			"metadata": {
+				"description": "Azure region where all resources will be deployed. This is distinct from resource group location."
+			}
+		},
+		"vmSku": {
+			"defaultValue": "Standard_H16r",
+			"type": "String",
+			"metadata": {
+				"description": "Which instance would you like to deploy to? Not all VMs are available in all regions"
+			}
+		},
+		"vmssName": {
+            "defaultValue": "btvvs003",
+			"maxLength": 10,
+			"type": "String",
+			"metadata": {
+				"description": "String used as a base for naming resources. Must be 3-10 characters in length and globally unique across Azure. A hash is prepended to this string for some resources, and resource-specific information is appended."
+			}
+		},
+		"instanceCount": {
+			"maxValue": 100,
+			"type": "Int",
+			"metadata": {
+				"description": "Number of VM instances (100 or less)."
+			}
+		},
+		"adminUsername": {
+			"type": "String",
+			"metadata": {
+				"description": "Admin username on all VMs."
+			}
+		},
+		"adminPassword": {
+			"type": "SecureString",
+			"metadata": {
+				"description": "Admin password on all VMs."
+			}
+		},
+		"vnetName": {
+			"defaultValue": "",
+			"type": "string"
+		},
+		"vnetResourceGroup": {
+			"defaultValue": "",
+			"type": "string"
+		}
+	},
+	"variables": {
+		"namingInfix": "[toLower(substring(concat(parameters('vmssName'), uniqueString(resourceGroup().id)), 0, 9))]",
+		"longNamingInfix": "[toLower(parameters('vmssName'))]",
+		"jumpBoxName": "[concat(variables('longNamingInfix'),'jb')]",
+		"jumpBoxSAName": "[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), 'jumpboxsa')), 'jb')]",
+		"jumpBoxOSDiskName": "[concat(variables('jumpBoxName'), 'osdisk')]",
+		"jumpBoxVHDContainerName": "[concat(variables('jumpBoxName'), 'vhd')]",
+		"jumpBoxIPConfigName": "[concat(variables('jumpBoxName'), 'ipconfig')]",
+		"jumpBoxNicName": "[concat(variables('jumpBoxName'), 'nic')]",
+		"storageAccountType": "Standard_LRS",
+		"newStorageAccountSuffix": "[concat(variables('namingInfix'), 'sa')]",
+		"uniqueStringArray": [
+			"[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '0')))]",
+			"[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '1')))]",
+			"[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '2')))]",
+			"[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '3')))]",
+			"[concat(uniqueString(concat(resourceGroup().id, variables('newStorageAccountSuffix'), '4')))]"
+		],
+		"saCount": "[length(variables('uniqueStringArray'))]",
+		"vhdContainerName": "[concat(variables('namingInfix'), 'vhd')]",
+		"osDiskName": "[concat(variables('namingInfix'), 'osdisk')]",
+		"vnetID": "[resourceId('MAT-Networking-RG','Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+		"subnetRef": "[concat(variables('vnetID'),'/subnets/',parameters('subnetName'))]",
+		"nicName": "[concat(variables('namingInfix'), 'nic')]",
+		"ipConfigName": "[concat(variables('namingInfix'), 'ipconfig')]",
+		"osType": {
+			"publisher": "OpenLogic",
+			"offer": "CentOS-HPC",
+			"sku": "7.3",
+			"version": "latest"
+		},
+		"imageReference": "[variables('osType')]",
+		},
+		"computeApiVersion": "2016-04-30-preview",
+		"networkApiVersion": "2016-03-30",
+		"storageApiVersion": "2015-06-15"
+	},
+	"resources": [
+	{"type": "Microsoft.Compute/virtualMachineScaleSets",
+		"sku": {
+			"name": "[parameters('vmSku')]",
+			"tier": "Standard",
+			"capacity": "[parameters('instanceCount')]"
+		},
+		"name": "[variables('namingInfix')]",
+		"apiVersion": "[variables('computeApiVersion')]",
+		"location": "[parameters('resourceLocation')]",
+		"properties": {
+			"overprovision": "true",
+			"upgradePolicy": {
+				"mode": "Manual"
+			},
+			"virtualMachineProfile": {
+				"storageProfile": {
+					"osDisk": {
+						"createOption": "FromImage"
+					},
+					"imageReference": "[variables('imageReference')]"
+				},
+				"osProfile": {
+					"computerNamePrefix": "[variables('namingInfix')]",
+					"adminUsername": "[parameters('adminUsername')]",
+					"adminPassword": "[parameters('adminPassword')]"
+				},
+				"networkProfile": {
+					"networkInterfaceConfigurations": [{
+						"name": "[variables('nicName')]",
+						"properties": {
+							"primary": "true",
+							"ipConfigurations": [{
+								"name": "[variables('ipConfigName')]",
+								"properties": {
+									"subnet": {
+										"id": "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', parameters('vnetResourceGroup'), '/providers/Microsoft.Network/virtualNetworks/', parameters('vnetName'), '/subnets/', parameters('subnetName'))]"
+									}
+								}
+							}]
+						}
+					}]
+				}
+			}
+		}
+	}]
+}
